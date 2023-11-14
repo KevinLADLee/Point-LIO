@@ -77,6 +77,8 @@ nav_msgs::Path path;
 nav_msgs::Odometry odomAftMapped;
 geometry_msgs::PoseStamped msg_body_pose;
 
+std::chrono::high_resolution_clock::time_point last_pub_odom_time;
+
 void SigHandle(int sig)
 {
     flg_exit = true;
@@ -1120,13 +1122,19 @@ int main(int argc, char** argv)
                     {
                         /******* Publish odometry *******/
 
-                        publish_odometry(pubOdomAftMapped);
-                        if (runtime_pos_log)
-                        {
-                            state_out = kf_output.x_;
-                            euler_cur = SO3ToEuler(state_out.rot);
-                            fout_out << setw(20) << Measures.lidar_beg_time - first_lidar_time << " " << euler_cur.transpose() << " " << state_out.pos.transpose() << " " << state_out.vel.transpose() \
-                            <<" "<<state_out.omg.transpose()<<" "<<state_out.acc.transpose()<<" "<<state_out.gravity.transpose()<<" "<<state_out.bg.transpose()<<" "<<state_out.ba.transpose()<<" "<<feats_undistort->points.size()<<endl;
+                        // Tick once in 200hz
+                        auto time_now = std::chrono::high_resolution_clock::now();
+                        // ROS_INFO("dur: %f", dur.toSec());
+                        if (time_now - last_pub_odom_time > std::chrono::milliseconds(5)){
+                            last_pub_odom_time = time_now;
+                            publish_odometry(pubOdomAftMapped);
+                            if (runtime_pos_log)
+                            {
+                                state_out = kf_output.x_;
+                                euler_cur = SO3ToEuler(state_out.rot);
+                                fout_out << setw(20) << Measures.lidar_beg_time - first_lidar_time << " " << euler_cur.transpose() << " " << state_out.pos.transpose() << " " << state_out.vel.transpose() \
+                                <<" "<<state_out.omg.transpose()<<" "<<state_out.acc.transpose()<<" "<<state_out.gravity.transpose()<<" "<<state_out.bg.transpose()<<" "<<state_out.ba.transpose()<<" "<<feats_undistort->points.size()<<endl;
+                            }
                         }
                     }
 
